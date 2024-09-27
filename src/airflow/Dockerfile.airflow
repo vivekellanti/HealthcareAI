@@ -1,0 +1,46 @@
+# Use the official Airflow image with Python 3.8
+FROM apache/airflow:2.4.0-python3.8
+
+# Switch to root user to install system-level dependencies
+USER root
+
+# Install additional system-level dependencies
+RUN apt-get update \
+    && apt-get install -y procps \
+    && apt-get install -y awscli postgresql-client libpq-dev build-essential curl locales \
+    && locale-gen en_US.UTF-8 \
+    && apt-get clean
+
+# Switch back to airflow user for pip installations
+USER airflow
+
+# Install necessary Python packages using pip
+RUN pip install 'apache-airflow[postgres,aws]==2.4.0' \
+    && pip install pandas boto3 requests urllib3
+
+# Set environment variables for Airflow
+ENV AIRFLOW_HOME=/opt/airflow
+
+# Copy your DAGs into the correct directory in the Airflow container
+COPY dags/ /opt/airflow/dags/
+
+# Expose necessary ports for Airflow
+EXPOSE 8080 8793
+
+# Initialize the Airflow metadata database
+RUN airflow db init
+
+# Create an Airflow user (for UI access) non-interactively by providing the password directly
+RUN airflow users create \
+    --username viveke \
+    --firstname vivek \
+    --lastname ellanti \
+    --role Admin \
+    --email vivek.ellanti@gmail.com \
+    --password airflowpwd
+
+# Set entrypoint to Airflow
+ENTRYPOINT ["airflow"]
+
+# Set the default command to run the Airflow webserver
+CMD ["webserver"]
